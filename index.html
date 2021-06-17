@@ -117,12 +117,13 @@
             await setupCamera(videoElem);
             const meLabeled = await loadLabeledFaceDescriptors("me", ['photos/me/1.png']);
             // if you check other people
-            // const asadaLabeled = await loadLabeledFaceDescriptors("other1", [
+            // const ohter1Labeled = await loadLabeledFaceDescriptors("other1", [
             //     'photos/other/1.jpg',
             //     'photos/other/2.jpg',
             //     'photos/other/3.jpg'
             // ]);
-            const faceMatcher = new faceapi.FaceMatcher([meLabeled, asadaLabeled], 0.4);
+            // const faceMatcher = new faceapi.FaceMatcher([meLabeled, ohter1Labeled], 0.4);
+            const faceMatcher = new faceapi.FaceMatcher([meLabeled], 0.4);
             render(videoElem, canvasElem, faceMatcher);
         }
     </script>
