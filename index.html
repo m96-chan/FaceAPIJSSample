@@ -4,7 +4,13 @@
     <meta charset="UTF-8">
     <title>FaceAPIJS</title>
     <script src="node_modules/face-api.js/dist/face-api.js"></script>
+    <script src="plugins/stamp.js"></script>
     <script>
+        const LIMIT_COUNT = 10;
+        let meCount = 0;
+        let isStampToday = false;
+        let stampTime = null;
+
         setupCamera = async (videoElement) => {
             videoElement.srcObject = await navigator.mediaDevices.getUserMedia({
                 audio: false,
@@ -20,9 +26,48 @@
                 };
             });
         };
+        //
+        stamp = async () => {
+            // 今日はスタンプ済み
+            if (isStampToday) {
+                return;
+            }
+            console.log('trigger stamp!');
+            await stampAttendance();
+            isStampToday = true;
+            stampTime = new Date();
+            console.log('stamp!')
+        }
+
+        resetFlags = () => {
+            if (isStampToday === false){
+                return;
+            }
+            const now = new Date();
+            //console.log(now.getDate());
+            if (stampTime.getDate() === now.getDate() &&
+                stampTime.getMonth() === now.getMonth() &&
+                stampTime.getFullYear() === now.getFullYear()){
+                // 同日はリセットしない。
+                return;
+            }
+            // 一応午前５時にリセットするようにしている。
+            if (isStampToday && now.getHours() >= 5 && now.getMinutes() >= 0 && now.getSeconds() === 0) {
+                isStampToday = false;
+                meCount = 0;
+                console.log('reset flag')
+            }
+        }
+
         render = (input, canvas, matcher) => {
 
             async function renderFrame() {
+                if (isStampToday || meCount > LIMIT_COUNT) {
+                    await stamp();
+                    resetFlags();
+                    requestAnimationFrame(renderFrame);
+                    return;
+                }
                 const detectResult = await faceapi.detectSingleFace(input, new faceapi.SsdMobilenetv1Options(0.5))
                     .withFaceLandmarks()
                     .withFaceDescriptor();
@@ -30,7 +75,10 @@
                     // Nothing to do
                 } else {
                     const matchResult = matcher.findBestMatch(detectResult.descriptor);
-                    console.log(matchResult.toString());
+                    if (matchResult.label === "me") {
+                        meCount++;
+                        //console.log(meCount);
+                    }
                 }
                 requestAnimationFrame(renderFrame);
             }
@@ -68,11 +116,12 @@
             await loadFaceAPIModels();
             await setupCamera(videoElem);
             const meLabeled = await loadLabeledFaceDescriptors("me", ['photos/me/1.png']);
-            const asadaLabeled = await loadLabeledFaceDescriptors("other1", [
-                'photos/other/1.jpg',
-                'photos/other/2.jpg',
-                'photos/other/3.jpg'
-            ]);
+            // if you check other people
+            // const asadaLabeled = await loadLabeledFaceDescriptors("other1", [
+            //     'photos/other/1.jpg',
+            //     'photos/other/2.jpg',
+            //     'photos/other/3.jpg'
+            // ]);
             const faceMatcher = new faceapi.FaceMatcher([meLabeled, asadaLabeled], 0.4);
             render(videoElem, canvasElem, faceMatcher);
         }
